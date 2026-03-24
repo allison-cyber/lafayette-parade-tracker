@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Lafayette Parade Tracker - Street View</title>
+    <title>Lafayette Parade Tracker</title>
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
@@ -11,8 +11,8 @@
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
         .info-panel {
             position: absolute; top: 10px; left: 10px; z-index: 1;
-            background: white; padding: 15px; border-radius: 8px;
-            font-family: Arial, sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            background: white; padding: 10px; border-radius: 8px;
+            font-family: Arial, sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
     </style>
 </head>
@@ -20,22 +20,24 @@
 
 <div class="info-panel">
     <h3 style="margin:0; color:#4b0082;">Lafayette Parade Live</h3>
-    <p style="margin:5px 0 0; font-size:12px;">Route Snapped to Streets</p>
+    <p style="margin:5px 0 0; font-size:12px;">Route: Pontiac Point to Cajundome</p>
 </div>
 
 <div id="map"></div>
 
 <script>
-    // 1. ADD YOUR TOKEN HERE
-    mapboxgl.accessToken = 'PASTE_YOUR_MAPBOX_TOKEN_HERE';
+    // CRITICAL: Replace the string below with your actual Mapbox token
+    mapboxgl.accessToken = 'pk.eyJ1IjoiYWxsaXNvbmJhbGVzaTIiLCJhIjoiY21uNHFtZGd2MDMydzJzb2g4ZmQ5MzRwYSJ9.o5zoZVFijMeZde1KvInPqw';
 
+    // Initialize the map
     const map = new mapboxgl.Map({
         container: 'map',
         style: 'mapbox://styles/mapbox/streets-v12',
-        center: [-92.0198, 30.2241], 
-        zoom: 14
+        center: [-92.0198, 30.2241], // Centered on Lafayette
+        zoom: 13
     });
 
+    // Your specific turn-by-turn points
     const paradeWaypoints = [
         [-91.9992, 30.2315], // Pontiac Point
         [-92.0085, 30.2245], // N. Chestnut
@@ -49,9 +51,67 @@
     ];
 
     map.on('load', () => {
-        getRoute();
+        console.log("Map loaded successfully");
+        drawParadeRoute();
 
-        // Markers for the 5 Pace Trucks
+        // Place the 5 Pace Trucks
         const trucks = [
             { name: "Lead Truck", coords: [-91.9992, 30.2315] },
-            { name: "Pace 2", coords: [-92.0085, 30.
+            { name: "Truck 2", coords: [-92.0085, 30.2245] },
+            { name: "Truck 3", coords: [-92.0165, 30.2195] },
+            { name: "Truck 4", coords: [-92.0350, 30.2250] },
+            { name: "Santa/End", coords: [-92.0420, 30.2320] }
+        ];
+
+        trucks.forEach(truck => {
+            new mapboxgl.Marker({ color: '#FFD700' }) // Gold markers
+                .setLngLat(truck.coords)
+                .setPopup(new mapboxgl.Popup().setHTML(`<b>${truck.name}</b>`))
+                .addTo(map);
+        });
+    });
+
+    async function drawParadeRoute() {
+        const coordsString = paradeWaypoints.join(';');
+        // Using 'walking' profile can sometimes follow parade paths better than 'driving'
+        const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordsString}?geometries=geojson&access_token=${mapboxgl.accessToken}`;
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (!data.routes || data.routes.length === 0) {
+                console.error("No route found. Check your Mapbox token.");
+                return;
+            }
+
+            const routeCoordinates = data.routes[0].geometry.coordinates;
+
+            map.addLayer({
+                id: 'paradeLine',
+                type: 'line',
+                source: {
+                    type: 'geojson',
+                    data: {
+                        type: 'Feature',
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: routeCoordinates
+                        }
+                    }
+                },
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: {
+                    'line-color': '#4b0082', // Mardi Gras Purple
+                    'line-width': 6,
+                    'line-opacity': 0.8
+                }
+            });
+        } catch (error) {
+            console.error("Error fetching route:", error);
+        }
+    }
+</script>
+
+</body>
+</html>
