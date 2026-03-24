@@ -26,17 +26,16 @@
 <div id="map"></div>
 
 <script>
-    // TO MAKE THE MAP APPEAR YOU MUST ADD YOUR ACCESS TOKEN FROM MAPBOX
-    mapboxgl.accessToken = 'Ppk.eyJ1IjoiYWxsaXNvbmJhbGVzaTIiLCJhIjoiY21uNHFtZGd2MDMydzJzb2g4ZmQ5MzRwYSJ9.o5zoZVFijMeZde1KvInPqw';
+    // 1. ADD YOUR TOKEN HERE
+    mapboxgl.accessToken = 'PASTE_YOUR_MAPBOX_TOKEN_HERE';
 
     const map = new mapboxgl.Map({
         container: 'map',
         style: 'mapbox://styles/mapbox/streets-v12',
-        center: [-92.0198, 30.2241], // Lafayette
-        zoom: 13
+        center: [-92.0198, 30.2241], 
+        zoom: 14
     });
 
-    // The key turn-points provided by you
     const paradeWaypoints = [
         [-91.9992, 30.2315], // Pontiac Point
         [-92.0085, 30.2245], // N. Chestnut
@@ -52,66 +51,7 @@
     map.on('load', () => {
         getRoute();
 
-        // Add the 5 Pace Trucks as Markers
+        // Markers for the 5 Pace Trucks
         const trucks = [
             { name: "Lead Truck", coords: [-91.9992, 30.2315] },
-            { name: "Pace 2", coords: [-92.0085, 30.2245] },
-            { name: "Mid-Parade", coords: [-92.0165, 30.2195] },
-            { name: "Pace 4", coords: [-92.0350, 30.2250] },
-            { name: "Santa/End", coords: [-92.0420, 30.2320] }
-        ];
-
-        trucks.forEach(truck => {
-            new mapboxgl.Marker({ color: 'gold' })
-                .setLngLat(truck.coords)
-                .setPopup(new mapboxgl.Popup().setHTML(`<b>${truck.name}</b>`))
-                .addTo(map);
-        });
-    });
-
-    async function getRoute() {
-        // This coordinates string tells Mapbox to find the driving path between points
-        const coordsString = paradeWaypoints.join(';');
-        const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordsString}?geometries=geojson&access_token=${mapboxgl.accessToken}`;
-
-        const query = await fetch(url);
-        const json = await query.json();
-        const data = json.routes[0];
-        const route = data.geometry.coordinates;
-
-        const geojson = {
-            type: 'Feature',
-            properties: {},
-            geometry: {
-                type: 'LineString',
-                coordinates: route
-            }
-        };
-
-        // Add the line to the map
-        map.addLayer({
-            id: 'route',
-            type: 'line',
-            source: {
-                type: 'geojson',
-                data: geojson
-            },
-            layout: {
-                'line-join': 'round',
-                'line-cap': 'round'
-            },
-            paint: {
-                'line-color': '#4b0082',
-                'line-width': 6,
-                'line-opacity': 0.75
-            }
-        });
-    }
-</script>
-
-</body>
-</html>
-
-    </script>
-</body>
-</html>
+            { name: "Pace 2", coords: [-92.0085, 30.
