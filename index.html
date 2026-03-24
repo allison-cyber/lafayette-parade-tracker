@@ -1,45 +1,52 @@
-const paradeRoute = {
-  "type": "Feature",
-  "geometry": {
-    "type": "LineString",
-    "coordinates": [
-      [-91.9992, 30.2315], // Pontiac Point (Simcoe/Surrey/Jefferson)
-      [-92.0085, 30.2245], // Right on N. Chestnut
-      [-92.0122, 30.2225], // Left on Buchanan
-      [-92.0150, 30.2210], // Left on Lafayette St
-      [-92.0165, 30.2195], // Left on Vermilion
-      [-92.0250, 30.2150], // Right on Johnston
-      [-92.0350, 30.2250], // Left on N. College
-      [-92.0380, 30.2280], // Right on Reinhardt
-      [-92.0420, 30.2320]  // Cajun Field to Cajundome
-    ]
-  }
-};
-
 <!DOCTYPE html>
 <html>
 <head>
     <title>Lafayette Parade Tracker</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        #map { height: 600px; width: 100%; border-radius: 12px; }
-        .truck-icon { background: #4b0082; color: white; padding: 5px; border-radius: 50%; border: 2px solid gold; text-align: center; font-weight: bold; }
+        body { margin: 0; padding: 0; font-family: sans-serif; }
+        #map { height: 100vh; width: 100%; } /* Makes map full screen */
+        .header-box { 
+            position: absolute; top: 10px; left: 50px; z-index: 1000; 
+            background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
-    <h2>Live Lafayette Parade Tracker</h2>
+
+    <div class="header-box">
+        <h2 style="margin:0; color:#4b0082;">Lafayette Parade Tracker</h2>
+        <p style="margin:0; font-size: 12px;">Track the 5 Pace Trucks below</p>
+    </div>
+
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <script>
-        // 1. Initialize Map centered on Lafayette
+        // 1. DATA: The manual route line (for fallback)
+        const paradeRoute = {
+            "type": "Feature",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [-91.9992, 30.2315], [-92.0085, 30.2245], [-92.0122, 30.2225], 
+                    [-92.0150, 30.2210], [-92.0165, 30.2195], [-92.0250, 30.2150], 
+                    [-92.0350, 30.2250], [-92.0380, 30.2280], [-92.0420, 30.2320]
+                ]
+            }
+        };
+
+        // 2. SETUP: Initialize Map centered on Lafayette
         const map = L.map('map').setView([30.2241, -92.0198], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
 
-        // 2. Add the Route Line
-        L.geoJSON(paradeRoute, { color: 'purple', weight: 5, opacity: 0.7 }).addTo(map);
+        // 3. DRAW: Add the basic Purple Route Line
+        L.geoJSON(paradeRoute, { color: 'purple', weight: 5, opacity: 0.5 }).addTo(map);
 
-        // 3. Setup the 5 Pace Trucks
+        // 4. TRUCKS: Setup the 5 Pace Trucks
         const trucks = [
             { id: 1, name: "Lead Truck", pos: [30.2315, -91.9992] },
             { id: 2, name: "Float Group A", pos: [30.2280, -92.0010] },
@@ -49,8 +56,41 @@ const paradeRoute = {
         ];
 
         trucks.forEach(t => {
-            L.marker(t.pos).addTo(map).bindPopup(t.name);
+            L.marker(t.pos).addTo(map).bindPopup(`<b>${t.name}</b>`);
         });
+
+        // 5. SMART ROUTE: Snap to streets (requires a Mapbox Token)
+        async function getSnappedRoute(coordinates) {
+            const token = 'REPLACE_WITH_YOUR_MAPBOX_TOKEN'; 
+            if (token.startsWith('REPLACE')) {
+                console.log("Mapbox token missing - using manual route line only.");
+                return;
+            }
+
+            const query = coordinates.map(c => c.join(',')).join(';');
+            const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${query}?geometries=geojson&access_token=${token}`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                const routeCoords = data.routes[0].geometry.coordinates;
+
+                L.polyline(routeCoords.map(c => [c[1], c[0]]), {
+                    color: '#4b0082',
+                    weight: 6,
+                    opacity: 0.9
+                }).addTo(map);
+            } catch (err) {
+                console.error("Error snapping to streets:", err);
+            }
+        }
+
+        // Run the street snap (using Longitude, Latitude order for the API)
+        const snapPoints = [
+            [-91.9992, 30.2315], [-92.0085, 30.2245], [-92.0250, 30.2150], [-92.0420, 30.2320]
+        ];
+        getSnappedRoute(snapPoints);
+
     </script>
 </body>
 </html>
