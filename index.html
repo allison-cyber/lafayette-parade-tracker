@@ -1,3 +1,20 @@
+const paradeRoute = {
+  "type": "Feature",
+  "geometry": {
+    "type": "LineString",
+    "coordinates": [
+      [-91.9992, 30.2315], // Pontiac Point (Simcoe/Surrey/Jefferson)
+      [-92.0085, 30.2245], // Right on N. Chestnut
+      [-92.0122, 30.2225], // Left on Buchanan
+      [-92.0150, 30.2210], // Left on Lafayette St
+      [-92.0165, 30.2195], // Left on Vermilion
+      [-92.0250, 30.2150], // Right on Johnston
+      [-92.0350, 30.2250], // Left on N. College
+      [-92.0380, 30.2280], // Right on Reinhardt
+      [-92.0420, 30.2320]  // Cajun Field to Cajundome
+    ]
+  }
+};
 // Function to get the "Street Legal" path from Mapbox
 async function getSnappedRoute(coordinates) {
     const query = coordinates.map(c => c.join(',')).join(';');
