@@ -15,34 +15,7 @@ const paradeRoute = {
     ]
   }
 };
-// Function to get the "Street Legal" path from Mapbox
-async function getSnappedRoute(coordinates) {
-    const query = coordinates.map(c => c.join(',')).join(';');
-    // This API call "snaps" your points to the nearest drivable roads
-    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${query}?geometries=geojson&access_token=YOUR_MAPBOX_TOKEN`;
-    
-    const response = await fetch(url);
-    const data = await response.json();
-    const route = data.routes[0].geometry.coordinates;
 
-    // Draw the actual street-hugging line on the Leaflet map
-    L.polyline(route.map(c => [c[1], c[0]]), {
-        color: '#4b0082', // Purple
-        weight: 6,
-        opacity: 0.8,
-        lineJoin: 'round'
-    }).addTo(map);
-}
-
-// Your Lafayette turn-points
-const points = [
-    [-91.9992, 30.2315], // Start
-    [-92.0085, 30.2245], // Chestnut
-    [-92.0250, 30.2150], // Johnston
-    [-92.0420, 30.2320]  // Cajundome
-];
-
-getSnappedRoute(points);
 <!DOCTYPE html>
 <html>
 <head>
