@@ -2,113 +2,108 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Lafayette Parade Tracker</title>
+    <title>Lafayette Parade Tracker - Official Route</title>
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     <style>
-        body { margin: 0; padding: 0; }
+        body { margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
-        .info-panel {
-            position: absolute; top: 10px; left: 10px; z-index: 1;
-            background: white; padding: 10px; border-radius: 8px;
-            font-family: Arial, sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        .ui-overlay {
+            position: absolute; top: 15px; left: 15px; z-index: 1;
+            background: white; padding: 15px; border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 240px;
         }
     </style>
 </head>
 <body>
 
-<div class="info-panel">
-    <h3 style="margin:0; color:#4b0082;">Lafayette Parade Live</h3>
-    <p style="margin:5px 0 0; font-size:12px;">Route: Pontiac Point to Cajundome</p>
+<div class="ui-overlay">
+    <h3 style="margin:0; color:#4b0082;">Lafayette Parade</h3>
+    <p style="margin:5px 0; font-size:12px; color: #666;">Pontiac Point to Cajundome</p>
+    <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
+    <div id="status" style="font-size:13px; font-weight:bold; color:green;">● Tracking 5 Pace Trucks</div>
 </div>
 
 <div id="map"></div>
 
 <script>
-    // CRITICAL: Replace the string below with your actual Mapbox token
+    // 1. ADD YOUR MAPBOX TOKEN HERE
     mapboxgl.accessToken = pk.eyJ1IjoiYWxsaXNvbmJhbGVzaTIiLCJhIjoiY21uNHFtZGd2MDMydzJzb2g4ZmQ5MzRwYSJ9.o5zoZVFijMeZde1KvInPqw;
 
-    // Initialize the map
     const map = new mapboxgl.Map({
         container: 'map',
         style: 'mapbox://styles/mapbox/streets-v12',
-        center: [-92.0198, 30.2241], // Centered on Lafayette
-        zoom: 13
+        center: [-92.0160, 30.2230], // Downtown Lafayette center
+        zoom: 14
     });
 
-    // Your specific turn-by-turn points
+    // 2. THE PRECISION WAYPOINTS (Coordinates for every turn)
     const paradeWaypoints = [
-        [-91.9992, 30.2315], // Pontiac Point
-        [-92.0085, 30.2245], // N. Chestnut
-        [-92.0122, 30.2225], // Buchanan
-        [-92.0150, 30.2210], // Lafayette St
-        [-92.0165, 30.2195], // Vermilion
-        [-92.0250, 30.2150], // Johnston
-        [-92.0350, 30.2250], // N College
-        [-92.0380, 30.2280], // Reinhardt
-        [-92.0420, 30.2320]  // Cajundome
+        [-91.9995, 30.2312], // Start: 100 Moss St
+        [-92.0041, 30.2285], // Onto Jefferson St
+        [-92.0084, 30.2245], // Corner Jefferson & Chestnut
+        [-92.0121, 30.2223], // Right on N. Chestnut
+        [-92.0142, 30.2212], // Left on Buchanan
+        [-92.0152, 30.2221], // Left on Lafayette St
+        [-92.0166, 30.2192], // Left on Vermilion
+        [-92.0252, 30.2151], // Right on Johnston
+        [-92.0345, 30.2251], // Left on N College
+        [-92.0381, 30.2281], // Right on Reinhardt
+        [-92.0405, 30.2305], // Entry into Cajun Field Lot
+        [-92.0425, 30.2325]  // Finish: Cajundome
     ];
 
     map.on('load', () => {
-        console.log("Map loaded successfully");
-        drawParadeRoute();
+        getSnappedRoute();
 
-        // Place the 5 Pace Trucks
+        // 3. TRACKERS: The 5 Pace Trucks
         const trucks = [
-            { name: "Lead Truck", coords: [-91.9992, 30.2315] },
-            { name: "Truck 2", coords: [-92.0085, 30.2245] },
-            { name: "Truck 3", coords: [-92.0165, 30.2195] },
-            { name: "Truck 4", coords: [-92.0350, 30.2250] },
-            { name: "Santa/End", coords: [-92.0420, 30.2320] }
+            { name: "Lead Truck", coords: [-91.9995, 30.2312] },
+            { name: "Truck 2", coords: [-92.0084, 30.2245] },
+            { name: "Truck 3", coords: [-92.0166, 30.2192] },
+            { name: "Truck 4", coords: [-92.0345, 30.2251] },
+            { name: "Santa/End", coords: [-92.0425, 30.2325] }
         ];
 
-        trucks.forEach(truck => {
-            new mapboxgl.Marker({ color: '#FFD700' }) // Gold markers
-                .setLngLat(truck.coords)
-                .setPopup(new mapboxgl.Popup().setHTML(`<b>${truck.name}</b>`))
+        trucks.forEach(t => {
+            new mapboxgl.Marker({ color: 'gold' })
+                .setLngLat(t.coords)
+                .setPopup(new mapboxgl.Popup().setHTML(`<b>${t.name}</b>`))
                 .addTo(map);
         });
     });
 
-    async function drawParadeRoute() {
+    async function getSnappedRoute() {
         const coordsString = paradeWaypoints.join(';');
-        // Using 'walking' profile can sometimes follow parade paths better than 'driving'
+        // We use the "walking" profile because it allows "Wrong Way" travel on one-way streets
+        // which parades often do, and it recognizes shortcuts better.
         const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordsString}?geometries=geojson&access_token=${mapboxgl.accessToken}`;
 
         try {
             const response = await fetch(url);
             const data = await response.json();
-            
-            if (!data.routes || data.routes.length === 0) {
-                console.error("No route found. Check your Mapbox token.");
-                return;
-            }
-
-            const routeCoordinates = data.routes[0].geometry.coordinates;
+            const route = data.routes[0].geometry.coordinates;
 
             map.addLayer({
-                id: 'paradeLine',
+                id: 'route',
                 type: 'line',
                 source: {
                     type: 'geojson',
                     data: {
                         type: 'Feature',
-                        geometry: {
-                            type: 'LineString',
-                            coordinates: routeCoordinates
-                        }
+                        geometry: { type: 'LineString', coordinates: route }
                     }
                 },
                 layout: { 'line-join': 'round', 'line-cap': 'round' },
                 paint: {
-                    'line-color': '#4b0082', // Mardi Gras Purple
+                    'line-color': '#4b0082', // Purple
                     'line-width': 6,
                     'line-opacity': 0.8
                 }
             });
-        } catch (error) {
-            console.error("Error fetching route:", error);
+        } catch (e) {
+            console.error("Route snapping failed:", e);
         }
     }
 </script>
