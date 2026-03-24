@@ -1,0 +1,66 @@
+// Function to get the "Street Legal" path from Mapbox
+async function getSnappedRoute(coordinates) {
+    const query = coordinates.map(c => c.join(',')).join(';');
+    // This API call "snaps" your points to the nearest drivable roads
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${query}?geometries=geojson&access_token=YOUR_MAPBOX_TOKEN`;
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    const route = data.routes[0].geometry.coordinates;
+
+    // Draw the actual street-hugging line on the Leaflet map
+    L.polyline(route.map(c => [c[1], c[0]]), {
+        color: '#4b0082', // Purple
+        weight: 6,
+        opacity: 0.8,
+        lineJoin: 'round'
+    }).addTo(map);
+}
+
+// Your Lafayette turn-points
+const points = [
+    [-91.9992, 30.2315], // Start
+    [-92.0085, 30.2245], // Chestnut
+    [-92.0250, 30.2150], // Johnston
+    [-92.0420, 30.2320]  // Cajundome
+];
+
+getSnappedRoute(points);
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lafayette Parade Tracker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #map { height: 600px; width: 100%; border-radius: 12px; }
+        .truck-icon { background: #4b0082; color: white; padding: 5px; border-radius: 50%; border: 2px solid gold; text-align: center; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h2>Live Lafayette Parade Tracker</h2>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // 1. Initialize Map centered on Lafayette
+        const map = L.map('map').setView([30.2241, -92.0198], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        // 2. Add the Route Line
+        L.geoJSON(paradeRoute, { color: 'purple', weight: 5, opacity: 0.7 }).addTo(map);
+
+        // 3. Setup the 5 Pace Trucks
+        const trucks = [
+            { id: 1, name: "Lead Truck", pos: [30.2315, -91.9992] },
+            { id: 2, name: "Float Group A", pos: [30.2280, -92.0010] },
+            { id: 3, name: "Mid-Parade", pos: [30.2245, -92.0085] },
+            { id: 4, name: "Float Group B", pos: [30.2225, -92.0122] },
+            { id: 5, name: "Santa/End", pos: [30.2210, -92.0150] }
+        ];
+
+        trucks.forEach(t => {
+            L.marker(t.pos).addTo(map).bindPopup(t.name);
+        });
+    </script>
+</body>
+</html>
