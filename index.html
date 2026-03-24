@@ -1,95 +1,116 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Lafayette Parade Tracker</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <meta charset="utf-8">
+    <title>Lafayette Parade Tracker - Street View</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     <style>
-        body { margin: 0; padding: 0; font-family: sans-serif; }
-        #map { height: 100vh; width: 100%; } /* Makes map full screen */
-        .header-box { 
-            position: absolute; top: 10px; left: 50px; z-index: 1000; 
-            background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        .info-panel {
+            position: absolute; top: 10px; left: 10px; z-index: 1;
+            background: white; padding: 15px; border-radius: 8px;
+            font-family: Arial, sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
     </style>
 </head>
 <body>
 
-    <div class="header-box">
-        <h2 style="margin:0; color:#4b0082;">Lafayette Parade Tracker</h2>
-        <p style="margin:0; font-size: 12px;">Track the 5 Pace Trucks below</p>
-    </div>
+<div class="info-panel">
+    <h3 style="margin:0; color:#4b0082;">Lafayette Parade Live</h3>
+    <p style="margin:5px 0 0; font-size:12px;">Route Snapped to Streets</p>
+</div>
 
-    <div id="map"></div>
+<div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // TO MAKE THE MAP APPEAR YOU MUST ADD YOUR ACCESS TOKEN FROM MAPBOX
+    mapboxgl.accessToken = 'PASTE_YOUR_MAPBOX_TOKEN_HERE';
 
-    <script>
-        // 1. DATA: The manual route line (for fallback)
-        const paradeRoute = {
-            "type": "Feature",
-            "geometry": {
-                "type": "LineString",
-                "coordinates": [
-                    [-91.9992, 30.2315], [-92.0085, 30.2245], [-92.0122, 30.2225], 
-                    [-92.0150, 30.2210], [-92.0165, 30.2195], [-92.0250, 30.2150], 
-                    [-92.0350, 30.2250], [-92.0380, 30.2280], [-92.0420, 30.2320]
-                ]
+    const map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [-92.0198, 30.2241], // Lafayette
+        zoom: 13
+    });
+
+    // The key turn-points provided by you
+    const paradeWaypoints = [
+        [-91.9992, 30.2315], // Pontiac Point
+        [-92.0085, 30.2245], // N. Chestnut
+        [-92.0122, 30.2225], // Buchanan
+        [-92.0150, 30.2210], // Lafayette St
+        [-92.0165, 30.2195], // Vermilion
+        [-92.0250, 30.2150], // Johnston
+        [-92.0350, 30.2250], // N College
+        [-92.0380, 30.2280], // Reinhardt
+        [-92.0420, 30.2320]  // Cajundome
+    ];
+
+    map.on('load', () => {
+        getRoute();
+
+        // Add the 5 Pace Trucks as Markers
+        const trucks = [
+            { name: "Lead Truck", coords: [-91.9992, 30.2315] },
+            { name: "Pace 2", coords: [-92.0085, 30.2245] },
+            { name: "Mid-Parade", coords: [-92.0165, 30.2195] },
+            { name: "Pace 4", coords: [-92.0350, 30.2250] },
+            { name: "Santa/End", coords: [-92.0420, 30.2320] }
+        ];
+
+        trucks.forEach(truck => {
+            new mapboxgl.Marker({ color: 'gold' })
+                .setLngLat(truck.coords)
+                .setPopup(new mapboxgl.Popup().setHTML(`<b>${truck.name}</b>`))
+                .addTo(map);
+        });
+    });
+
+    async function getRoute() {
+        // This coordinates string tells Mapbox to find the driving path between points
+        const coordsString = paradeWaypoints.join(';');
+        const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordsString}?geometries=geojson&access_token=${mapboxgl.accessToken}`;
+
+        const query = await fetch(url);
+        const json = await query.json();
+        const data = json.routes[0];
+        const route = data.geometry.coordinates;
+
+        const geojson = {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+                type: 'LineString',
+                coordinates: route
             }
         };
 
-        // 2. SETUP: Initialize Map centered on Lafayette
-        const map = L.map('map').setView([30.2241, -92.0198], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
-
-        // 3. DRAW: Add the basic Purple Route Line
-        L.geoJSON(paradeRoute, { color: 'purple', weight: 5, opacity: 0.5 }).addTo(map);
-
-        // 4. TRUCKS: Setup the 5 Pace Trucks
-        const trucks = [
-            { id: 1, name: "Lead Truck", pos: [30.2315, -91.9992] },
-            { id: 2, name: "Float Group A", pos: [30.2280, -92.0010] },
-            { id: 3, name: "Mid-Parade", pos: [30.2245, -92.0085] },
-            { id: 4, name: "Float Group B", pos: [30.2225, -92.0122] },
-            { id: 5, name: "Santa/End", pos: [30.2210, -92.0150] }
-        ];
-
-        trucks.forEach(t => {
-            L.marker(t.pos).addTo(map).bindPopup(`<b>${t.name}</b>`);
+        // Add the line to the map
+        map.addLayer({
+            id: 'route',
+            type: 'line',
+            source: {
+                type: 'geojson',
+                data: geojson
+            },
+            layout: {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            paint: {
+                'line-color': '#4b0082',
+                'line-width': 6,
+                'line-opacity': 0.75
+            }
         });
+    }
+</script>
 
-        // 5. SMART ROUTE: Snap to streets (requires a Mapbox Token)
-        async function getSnappedRoute(coordinates) {
-            const token = 'REPLACE_WITH_YOUR_MAPBOX_TOKEN'; 
-            if (token.startsWith('REPLACE')) {
-                console.log("Mapbox token missing - using manual route line only.");
-                return;
-            }
-
-            const query = coordinates.map(c => c.join(',')).join(';');
-            const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${query}?geometries=geojson&access_token=${token}`;
-            
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                const routeCoords = data.routes[0].geometry.coordinates;
-
-                L.polyline(routeCoords.map(c => [c[1], c[0]]), {
-                    color: '#4b0082',
-                    weight: 6,
-                    opacity: 0.9
-                }).addTo(map);
-            } catch (err) {
-                console.error("Error snapping to streets:", err);
-            }
-        }
-
-        // Run the street snap (using Longitude, Latitude order for the API)
-        const snapPoints = [
-            [-91.9992, 30.2315], [-92.0085, 30.2245], [-92.0250, 30.2150], [-92.0420, 30.2320]
-        ];
-        getSnappedRoute(snapPoints);
+</body>
+</html>
 
     </script>
 </body>
